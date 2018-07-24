@@ -1,0 +1,9 @@
+import subprocess
+import sys
+import os
+import gpumux
+
+# Pass arguments to gpumux script
+subprocess.check_call([
+    os.path.join(os.path.dirname(gpumux.__file__), "gpumux.py")] +
+    sys.argv[1:])
