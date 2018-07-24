@@ -1,0 +1,160 @@
+<!doctype html>
+<html ng-app="gpuMuxApp">
+<head>
+    <title>GPUMux - ${host}:${path}</title>
+    <link rel="stylesheet" crossorigin="anonymous"
+          href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <div ng-controller="topCtrl">
+        <h1>GPUMux</h1>
+        <table class="table table-striped">
+            <tr>
+                <th>Host</th>
+                <td>${host}</td>
+            </tr>
+            <tr>
+                <th>Path (--path)</th>
+                <td>${path}</td>
+            </tr>
+            <tr>
+                <th>GPUs</th>
+                <td>${gpus}</td>
+            </tr>
+            <tr>
+                <th style="vertical-align: middle">Python (--py)</th>
+                <td>${python}</td>
+            </tr>
+        </table>
+        <div class="alert alert-danger" ng-show="status_error">
+            <b>Something is not right</b>, I could not connect to the server. Is the instance down?
+        </div>
+        <div class="alert alert-danger" ng-show="!job_thread_alive">
+            <b>Not ready</b>, the internal job monitoring has not started or crashed.
+        </div>
+        <h1>Running</h1>
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>GPU</th>
+                <th>ID</th>
+                <th>Job</th>
+                <th>Time</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr ng-repeat="j in running_jobs">
+                <td>{{j.gpu}}</td>
+                <td><a ng-href="/job/{{j.id}}" target="_blank">{{j.id}}</a></td>
+                <td>{{j.cmd}}</td>
+                <td>{{j.time|elapsed}}</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <h1>Pending <button class="btn btn-info" ng-show="!edit_mode" ng-click="set_edit_mode(true)">Edit</button></h1>
+        <textarea ng-model="pending_jobs" class="form-control" rows="16" ng-readonly="!edit_mode"></textarea>
+        <br/>
+        <button class="btn btn-success" ng-show="edit_mode" ng-click="save()">Save</button>
+        <button class="btn btn-danger" ng-show="edit_mode" ng-click="set_edit_mode(false)">Cancel</button>
+
+        <h1>Completed
+            <button class="btn btn-info" ng-show="!show_completed" ng-click="set_show_completed(true)">Expand ({{completed_jobs.length}})</button>
+            <button class="btn btn-info" ng-show="show_completed" ng-click="set_show_completed(false)">Collapse</button>
+        </h1>
+        <table class="table" ng-show="show_completed">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Job</th>
+                <th>Status</th>
+                <th>Time</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr ng-repeat="j in completed_jobs"
+                ng-class="{true: 'danger', false: 'success'}[j.status != 0]">
+                <td><a ng-href="/job/{{j.id}}" target="_blank">{{j.id}}</a></td>
+                <td>{{j.cmd}}</td>
+                <td>{{j.status == 0 ? 'Success' : 'Fail(' + j.status + ')'}}</td>
+                <td>{{j.time|elapsed}}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+<script type="text/javascript">
+    var app = angular.module('gpuMuxApp', []);
+    app.filter('elapsed',
+function() {
+  return function(t) {
+    var h = '0' + Math.floor(t / 3600);
+    var m = '0' + Math.floor((t - (h * 3600)) / 60);
+    var s = '0' + (t - (h * 3600) - (m * 60));
+    var hms = [h, m, s];
+    hms = hms.map(function(v) {
+      return v.substr(v.length-2);
+    });
+    return hms.join(':');
+  }
+});
+    app.controller('topCtrl',
+function ($scope, $http, $timeout) {
+    $scope.status_error = false;
+    $scope.job_thread_alive = false;
+    $scope.running_jobs = [];
+    $scope.completed_jobs = [];
+    $scope.pending_jobs = '';
+    $scope.pending_jobs_last = $scope.pending_jobs;
+    $scope.edit_mode = false;
+    $scope.show_completed = true;
+
+    $scope.save = function() {
+        $scope.set_edit_mode(false);
+        $http
+        .post(${url_for('queue_update')|tojson}, {pending: $scope.pending_jobs})
+        .then(function(response) {
+            $scope.pending_jobs_last = $scope.pending_jobs;
+        }, function(error) {
+            $scope.status_error = true;
+            $scope.pending_jobs = $scope.pending_jobs_last;
+        });
+    };
+    $scope.cancel = function() {
+        $scope.pending_jobs = $scope.pending_jobs_last
+        $scope.set_edit_mode(false);
+    };
+    $scope.set_edit_mode = function(value) {
+        $scope.edit_mode = value;
+    };
+    $scope.set_show_completed = function(value) {
+        $scope.show_completed = value;
+    };
+    $scope.poll_status = function() {
+        $http
+        .get(${url_for('status')|tojson})
+        .then(function(response) {
+            $scope.status_error = false;
+            $scope.job_thread_alive = response.data.job_thread;
+            $scope.status_hash = response.data.status_hash;
+            $scope.completed_jobs = response.data.completed_jobs;
+            $scope.running_jobs = response.data.running_jobs;
+            if ($scope.pending_jobs_last != response.data.pending_jobs) {
+                $scope.pending_jobs = response.data.pending_jobs;
+                $scope.pending_jobs_last = $scope.pending_jobs;
+            }
+            $timeout($scope.poll_status, 5 * 1000);
+        }, function (error) {
+            $scope.status_error = true;
+            $timeout($scope.poll_status, 30 * 1000);
+        });
+    };
+    $scope.poll_status();
+});
+
+</script>
+</html>
