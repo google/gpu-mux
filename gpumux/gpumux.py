@@ -271,5 +271,12 @@ if not os.path.exists(PENDING_JOBS):
     open(PENDING_JOBS, 'w').write('')
 JOBS = Jobs()
 JOB_THREAD = threading.Thread(target=job_thread)
-JOB_THREAD.start()
-app.run(port=args.port)
+
+
+def main():
+    JOB_THREAD.start()
+    app.run(port=args.port)
+
+
+if __name__ == '__main__':
+    main()
