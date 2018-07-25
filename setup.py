@@ -1,23 +1,25 @@
-import sys
-
-py_version = (sys.version_info.major, sys.version_info.minor)
-if py_version < (3, 5):
-    raise ValueError(
-        "This module is only compatible with Python 3.5+, but you are running "
-        "Python {}.".format(py_version))
-
 from setuptools import setup
 
 setup(
     name='gpumux',
-    packages=['gpumux'],
     version='1.0.0',
-    install_requires=[
-      "flask",
+    description='A simple web interface for queueing GPU jobs in the cloud.',
+    author='David Berthelot',
+    author_email='dberth@google.com',
+    url='https://github.com/google/gpu-mux',
+    py_modules=['gpumux'],
+    classifiers=[
+      'Development Status :: 5 - Production/Stable',
+      'Framework :: Flask',
+      'Intended Audience :: Developers',
+      'License :: OSI Approved :: Apache Software License',
+      'Programming Language :: Python',
+      'Programming Language :: Python :: 3',
+      'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
+      'Topic :: Scientific/Engineering',
     ],
-    author='David Berthelot, Tom B Brown',
-    author_email='dberth@google.com, tomfeelslucky@google.com',
-    scripts=[
-      'bin/gpumux',
-    ]
+    install_requires=['flask'],
+    entry_points={
+      'console_scripts': ['gpumux = gpumux:main']
+    }
 )
