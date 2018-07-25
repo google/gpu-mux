@@ -12,9 +12,7 @@ If the instance is rebooted or shut down, the jobs are restarted when you launch
 ## Setup
 
 ```bash
-virtualenv -p python3 --system-site-packages env3
-. env3/bin/activate
-pip3 install -r requirements.txt
+pip3 install --upgrade gpumux
 ```
 
 ## Usage
@@ -28,7 +26,7 @@ In the folder you want to run jobs in, start GPUMux:
 
 ```bash
 # On your remote machine where the tasks will run.
-./gpumux.py --port 3390 --path <path where to run jobs> --py <path to your custom python>
+gpumux --port 3390 --path <path where to run jobs> --py <path to your custom python>
 ```
 
 This command launches GPUMux in the local folder.

@@ -7,7 +7,7 @@ setup(
     author='David Berthelot',
     author_email='dberth@google.com',
     url='https://github.com/google/gpu-mux',
-    py_modules=['gpumux'],
+    packages=['gpumux'],
     classifiers=[
       'Development Status :: 5 - Production/Stable',
       'Framework :: Flask',
@@ -20,6 +20,10 @@ setup(
     ],
     install_requires=['flask'],
     entry_points={
-      'console_scripts': ['gpumux = gpumux:main']
-    }
+      'console_scripts': ['gpumux=gpumux.gpumux:main']
+    },
+    include_package_data=True,
+    package_data={
+      'gpumux': ['templates/*.html']
+    },
 )
