@@ -45,6 +45,8 @@ PENDING_JOBS = os.path.join(PATH, args.logdir, 'pending_jobs.txt')
 RUNNING_PATH = os.path.join(PATH, args.logdir, 'running')
 COMPLETED_PATH = os.path.join(PATH, args.logdir, 'completed')
 
+CANCELLED_STATUS = "0" # mark canceled as successful
+
 SCREEN_RC = 'logfile %d.log\n'
 BASH_CMD = """#!/bin/bash
 
@@ -99,6 +101,7 @@ class Jobs:
         self.running = self.parse_jobs(RUNNING_PATH)
         self.completed = self.parse_jobs(COMPLETED_PATH)
         self.pending_update = []
+        self.pending_cancel = []
 
     def refresh(self):
         if self.pending_update:
@@ -108,6 +111,9 @@ class Jobs:
         self.pending = [x for x in open(PENDING_JOBS, 'r').read().split('\n')
                         if x]
         self.running = self.parse_jobs(RUNNING_PATH)
+        for job in self.running:
+            if job.id in self.pending_cancel:
+                job.cancel()
         to_complete = [x for x in self.running if x.status is not None]
         if to_complete:
             self.running = [x for x in self.running if x not in to_complete]
@@ -119,6 +125,7 @@ class Jobs:
             update_pending_file = True
         if update_pending_file:
             open(PENDING_JOBS, 'w').write('\n'.join(self.pending))
+        self.pending_cancel = []
 
     def schedule(self):
         if not self.pending:
@@ -213,6 +220,10 @@ class Job:
         status = popen.wait()
         assert status == 0
 
+    def cancel(self):
+        open(os.path.join(RUNNING_PATH, '%d.status' % self.id), 'w').write(CANCELLED_STATUS)
+        subprocess.call(["screen", "-X", "-S", self.screen_id, "kill"])
+
     def complete(self):
         assert self.status is not None
         files = glob.glob(os.path.join(RUNNING_PATH, '%d.*' % self.id))
@@ -255,6 +266,12 @@ def job_log(job_id):
     else:
         flask.abort(404)
     return flask.Response(open(fn, 'r').read(), mimetype='text/plain')
+
+
+@app.route('/cancel/<job_id>')
+def cancel_job(job_id):
+    JOBS.pending_cancel.append(int(job_id))
+    return flask.Response()
 
 
 def job_thread():

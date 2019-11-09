@@ -41,14 +41,17 @@
             <tr>
                 <th>GPU</th>
                 <th>ID</th>
+                <th>Cancel</th>
                 <th>Job</th>
                 <th>Time</th>
             </tr>
             </thead>
+            <!--  <td><a ng-href="/cancel/{{j.id}}" target="#">x</a></td> -->
             <tbody>
             <tr ng-repeat="j in running_jobs">
                 <td>{{j.gpu}}</td>
                 <td><a ng-href="/job/{{j.id}}" target="_blank">{{j.id}}</a></td>
+                <td><a ng-click="cancel_job(j.id)" href="#">x</a></td>
                 <td>{{j.cmd}}</td>
                 <td>{{j.time|elapsed}}</td>
             </tr>
@@ -112,6 +115,10 @@ function ($scope, $http, $timeout) {
     $scope.pending_jobs_last = $scope.pending_jobs;
     $scope.edit_mode = false;
     $scope.show_completed = true;
+
+    $scope.cancel_job = function(job_id) {
+     $http.get("/cancel/"+ job_id);
+    };
 
     $scope.save = function() {
         $scope.set_edit_mode(false);
